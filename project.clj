@@ -10,4 +10,6 @@
   :pedantic? :warn
   :dependencies [[org.clojure/clojure      "1.10.3"]
                  [org.antlr/antlr4-runtime "4.9.2"]
-                 [com.exoscale/antlr-cel   "0.1.1"]])
+                 [com.exoscale/antlr-cel   "0.1.1"]]
+
+  :profiles {:test {:plugins [[lein-cljfmt "0.8.0"]]}})

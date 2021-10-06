@@ -23,8 +23,8 @@
         lexer  (CELLexer. cs)
         ts     (CommonTokenStream. lexer)
         parser (doto (CELParser. ts)
-                  (.addErrorListener (error-listener state)))
+                 (.addErrorListener (error-listener state)))
         tree   (.start parser)]
-     (when (seq @state)
-       (throw (ex-info "unable to parse CEL expression" {:errors @state})))
-     tree))
+    (when (seq @state)
+      (throw (ex-info "unable to parse CEL expression" {:errors @state})))
+    tree))

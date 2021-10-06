@@ -38,30 +38,30 @@
 (defn- unescape-chars
   [s]
   (-> s
-     (str/replace "\\\\" "\\")
-     (str/replace "\\?" "?")
-     (str/replace "\\'" "'")
-     (str/replace "\\\"" "\"")
-     (str/replace "\\`"  "`")
-     (str/replace "\\a" "\u0007")
-     (str/replace "\\b" "\b")
-     (str/replace "\\f" "\f")
-     (str/replace "\\n" "\n")
-     (str/replace "\\r" "\r")
-     (str/replace "\\t" "\t")
-     (str/replace "\\v" "")
-     (str/replace #"(?i)\\u[0-9a-f]{8,8}" #(Character/toString
-                                            (Long/parseLong (subs % 2) 16)))
-     (str/replace #"(?i)\\u[0-9a-f]{4,4}" #(Character/toString
-                                            (Long/parseLong (subs % 2) 16)))
-     (str/replace #"(?i)\\x[0-9a-f]{2,2}" #(Character/toString
-                                            (Long/parseLong (subs % 2) 16)))
-     (str/replace #"\\[0-3][0-7]{2,2}" #(Character/toString
-                                         (Long/parseLong (subs % 1) 8)))))
+      (str/replace "\\\\" "\\")
+      (str/replace "\\?" "?")
+      (str/replace "\\'" "'")
+      (str/replace "\\\"" "\"")
+      (str/replace "\\`"  "`")
+      (str/replace "\\a" "\u0007")
+      (str/replace "\\b" "\b")
+      (str/replace "\\f" "\f")
+      (str/replace "\\n" "\n")
+      (str/replace "\\r" "\r")
+      (str/replace "\\t" "\t")
+      (str/replace "\\v" "")
+      (str/replace #"(?i)\\u[0-9a-f]{8,8}" #(Character/toString
+                                             (Long/parseLong (subs % 2) 16)))
+      (str/replace #"(?i)\\u[0-9a-f]{4,4}" #(Character/toString
+                                             (Long/parseLong (subs % 2) 16)))
+      (str/replace #"(?i)\\x[0-9a-f]{2,2}" #(Character/toString
+                                             (Long/parseLong (subs % 2) 16)))
+      (str/replace #"\\[0-3][0-7]{2,2}" #(Character/toString
+                                          (Long/parseLong (subs % 1) 8)))))
 
 (defn- unescape-bytes
   [s]
-    (loop [s s
+  (loop [s s
          ba []]
     (cond
       (empty? s)

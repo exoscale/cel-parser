@@ -72,8 +72,8 @@
           (expr/update expr not)
           (expr/error "no such overload"))))
 
-     (visitNegate [ctx]
-       (let [expr (.visit this (.member ctx))]
+    (visitNegate [ctx]
+      (let [expr (.visit this (.member ctx))]
         (try
           (expr/eval overloads :negate [expr])
           (catch ArithmeticException e

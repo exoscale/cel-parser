@@ -46,7 +46,7 @@
 (defn make-map
   [x]
   (reduce conj {}
-          (for [e (:entries x )]
+          (for [e (:entries x)]
             [(translate (:key e))
              (translate (:value e))])))
 

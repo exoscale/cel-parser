@@ -147,18 +147,18 @@
   (compareTo [_ other]
     (loop [x (seq x)
            y (seq (val other))]
-    (cond
-      (clojure.core/nil? x)
-      -1
+      (cond
+        (clojure.core/nil? x)
+        -1
 
-      (clojure.core/nil? y)
-      1
+        (clojure.core/nil? y)
+        1
 
-      :else
-      (let [order (compare (first x) (first y))]
-        (if (zero? order)
-          (recur (seq (rest x)) (seq (rest y)))
-          order))))))
+        :else
+        (let [order (compare (first x) (first y))]
+          (if (zero? order)
+            (recur (seq (rest x)) (seq (rest y)))
+            order))))))
 
 (defrecord CollType [elems]
   TypedValue
@@ -200,7 +200,7 @@
                     (seq
                      (for [candidate elems
                            :let [eq? (and (= (typeof candidate) (typeof e))
-                                      (equal? candidate e))]
+                                          (equal? candidate e))]
                            :when (and eq? (instance? BoolType eq?) (val eq?))]
                        true)))]
       (cond
@@ -243,7 +243,6 @@
         (or (and (= 1 (count m1ktypes)) (< 1 (count m2ktypes)))
             (and (= 1 (count m2ktypes)) (< 1 (count m1ktypes))))
         (ErrorType. "no such overload")
-
 
         :else
         (BoolType.
@@ -425,7 +424,6 @@
     (catch Exception e
       (error (or (ex-message e) "nil")))))
 
-
 ;; Helpers
 ;; =======
 
@@ -528,8 +526,6 @@
       (or (read-simple-duration (str/lower-case (val x)))
           (ErrorType. (ex-message e))))))
 
-
-
 (defn same?
   [args]
   (= 1 (count (distinct (map typeof args)))))
@@ -557,7 +553,7 @@
     (cond
       (and (instance? TimestampType t) (instance? TimestampType d))
       (make-duration (java.time.Duration/between (.toInstant (val t))
-                                                  (.toInstant (val d))))
+                                                 (.toInstant (val d))))
 
       (and (instance? DurationType t) (instance? TimestampType d))
       (sub-time-duration d t)
@@ -570,7 +566,6 @@
       (update t #(.minus %1 %2) (val d)))
     (catch Exception e
       (ErrorType. (or (ex-message e) "npe")))))
-
 
 (defn get-date
   ([t]
