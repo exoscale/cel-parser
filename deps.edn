@@ -1,5 +1,5 @@
 {:exoscale.project/lib exoscale/instancepool-entities
- :exoscale.project/version-file "../../VERSION"
+ :exoscale.project/version-file "VERSION"
  :slipset.deps-deploy/exec-args {:installer :remote
                                  :sign-releases? false}
  :exoscale.project/deploy? true
