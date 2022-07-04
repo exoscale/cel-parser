@@ -23,6 +23,15 @@ jobs:
             /root/.m2
           key: ${{ runner.os }}-${{ hashFiles('**/deps.edn') }}
 
+      - name: Lint
+        run: clojure -T:project lint
+
+      - name: Format
+        run: clojure -T:project format-check
+
+      - name: Test
+        id: test
+        run: clojure -T:project test :kaocha.filter/focus '[:unit]'
 
       - name: Run tests
         run: clj -X:test
