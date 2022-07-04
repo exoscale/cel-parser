@@ -15,7 +15,6 @@
    :ns-default exoscale.tools.project}
   :test
   {:extra-deps {lambdaisland/kaocha {:mvn/version "1.68.1059"}
-                org.clojure/test.check {:mvn/version "1.1.1"}
-                lambdaisland/kaocha-junit-xml {:mvn/version "0.0.76"}}
+                org.clojure/test.check {:mvn/version "1.1.1"}}
    :extra-paths ["test" "test/resources" "target/classes"]
    :exec-fn kaocha.runner/exec-fn}}}
