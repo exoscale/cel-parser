@@ -1,0 +1,20 @@
+{:exoscale.project/lib com.exoscale/cel-parser
+ :exoscale.project/version-file "VERSION"
+ :slipset.deps-deploy/exec-args {:installer :remote
+                                 :sign-releases? false}
+ :exoscale.project/deploy? true
+
+ :deps {org.clojure/clojure {:mvn/version "1.10.3"}
+        org.antlr/antlr4-runtime {:mvn/version "4.9.2"}
+        com.exoscale/antlr-cel {:mvn/version "0.1.1"}}
+
+ :aliases
+ {:project
+  {:deps {io.github.exoscale/tools.project
+          {:git/sha "b183fa74febb3f5f4daeb0c732a3817bf09e0f33"}}
+   :ns-default exoscale.tools.project}
+  :test
+  {:extra-deps {lambdaisland/kaocha {:mvn/version "1.68.1059"}
+                org.clojure/test.check {:mvn/version "1.1.1"}}
+   :extra-paths ["test" "test/resources" "target/classes"]
+   :exec-fn kaocha.runner/exec-fn}}}
