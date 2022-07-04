@@ -8,7 +8,4 @@
             :kaocha.plugin/capture-output
             :kaocha.plugin/junit-xml
             :kaocha.plugin/profiling]
-  ;; :kaocha.plugin.junit-xml/target-file "target/test-reports/report.xml"
-  ;; :tests {:type :kaocha.type/clojure.test
-  ;;         :ns-patterns ["-test$"]}
-  }
+  :kaocha.plugin.junit-xml/target-file "target/test-reports/report.xml"}
