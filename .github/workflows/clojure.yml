@@ -6,7 +6,20 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v2
-    - name: Run tests
-      run: clj -X:test
+      - name: Check out Git repository
+        uses: actions/checkout@v3
+
+      - name: Cache mvn/git deps
+        uses: actions/cache@v3
+        id: cache-deps
+        with:
+          path: |
+            /root/.gitlibs
+            /root/.m2
+          key: ${{ runner.os }}-${{ hashFiles('**/deps.edn') }}
+
+
+      - name: Run tests
+        run: clj -X:test
