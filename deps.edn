@@ -1,4 +1,4 @@
-{:exoscale.project/lib exoscale/instancepool-entities
+{:exoscale.project/lib com.exoscale/cel-parser
  :exoscale.project/version-file "VERSION"
  :slipset.deps-deploy/exec-args {:installer :remote
                                  :sign-releases? false}
