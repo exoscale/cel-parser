@@ -13,14 +13,17 @@
 (defn recognition-exception->map
   "Converts a RecognitionException to a nice readable map."
   [^RecognitionException e]
-  {:rule (.getCtx e)
-   :state (.getOffendingState e)
-   :expected (try (.getExpectedTokens e)
-                  (catch IllegalArgumentException _
-                    ; I think ANTLR throws here for
-                    ; tokenizer errors.
-                    nil))
-   :token (.getOffendingToken e)})
+  (let [rule (.getCtx e)
+        expected (try (.getExpectedTokens e)
+                      (catch IllegalArgumentException _
+                                        ; I think ANTLR throws here for
+                                        ; tokenizer errors.
+                        nil))
+        token (.getOffendingToken e)]
+    (cond-> {:state (.getOffendingState e)}
+      rule (assoc :rule rule)
+      expected (assoc :expected expected)
+      token (assoc :token token))))
 
 (defn- error-listener
   "Error listener for the parser"
@@ -29,10 +32,11 @@
     (syntaxError [recognizer offending-symbol line char msg ex]
       (vswap! state
               conj
-              (cond-> {:symbol offending-symbol
-                       :line line
-                       :char char
-                       :msg msg}
+              (cond-> {:msg msg}
+                (some? offending-symbol)
+                (assoc :symbol offending-symbol)
+                line (assoc :line line)
+                char (assoc :char char)
                 (instance? Parser recognizer)
                 (assoc :stack (-> recognizer .getRuleInvocationStack reverse))
                 (some? ex)
@@ -51,5 +55,7 @@
         parser (doto (CELParser. ts) (.addErrorListener err-listener))
         tree (.start parser)]
     (when (seq @state)
-      (throw (ex-info "unable to parse CEL expression" {:errors @state})))
+      (throw (ex-info "Unable to parse CEL expression"
+                      {:exoscale.ex/type :exoscale.ex/fault
+                       :errors @state})))
     tree))
