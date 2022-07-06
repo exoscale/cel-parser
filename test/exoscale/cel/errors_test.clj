@@ -1,5 +1,5 @@
 (ns exoscale.cel.errors-test
-  (:require [clojure.test :as t :refer [deftest is]]
+  (:require [clojure.test :refer [deftest is testing]]
             [exoscale.cel.parser :as parser]))
 
 (deftest test-errors
