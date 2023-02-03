@@ -1,7 +1,8 @@
 {:exoscale.project/lib com.exoscale/cel-parser
  :exoscale.project/version-file "VERSION"
  :slipset.deps-deploy/exec-args {:installer :remote
-                                 :sign-releases? false}
+                                 :sign-releases? false
+                                 :repository "clojars"}
  :exoscale.project/deploy? true
 
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
