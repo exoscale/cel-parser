@@ -4,7 +4,7 @@
                                  :sign-releases? false}
  :exoscale.project/deploy? true
 
- :deps {org.clojure/clojure {:mvn/version "1.10.3"}
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.antlr/antlr4-runtime {:mvn/version "4.9.2"}
         com.exoscale/antlr-cel {:mvn/version "0.1.1"}}
 

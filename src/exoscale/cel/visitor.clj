@@ -1,6 +1,6 @@
 (ns ^:no-doc exoscale.cel.visitor
   "Visitor based parser."
-  (:refer-clojure :exclude [eval])
+  (:refer-clojure :exclude [eval parse-long])
   (:require [exoscale.cel.expr     :as expr]
             [exoscale.cel.unescape :as unescape]
             [exoscale.cel.bindings :as bindings]
