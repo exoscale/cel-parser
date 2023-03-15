@@ -33,11 +33,11 @@
 |   :throw-on-error? |        Whether to throw on error results. Default: false |
 | :translate-result? | Whether to transform results into values. Default: true. |"
   ([program bindings]
-   (-> (visitor/build {:bindings (bindings/build bindings)})
-       (visitor/eval program)))
+   (eval-for program bindings {}))
   ([program bindings opts]
    (-> (visitor/build (assoc opts :bindings (bindings/build bindings)))
-       (visitor/eval program))))
+       (visitor/eval program)
+       (handle-output))))
 
 (defn parse-eval
   "Merged parsing and evaluation of a CEL expression.
