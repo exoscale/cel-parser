@@ -25,7 +25,7 @@ decomposed in two phases, first building the program with
 ``` clojure
 (def my-program (make-program "'hello, ' + x + '!'"))
 
-(eval-for my-program {:bindings {:x "world"}})
+(eval-for my-program {:x "world"})
 ```
 
 When execution results in an error, an exception is returned, not
