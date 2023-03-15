@@ -37,7 +37,7 @@
   ([program bindings opts]
    (-> (visitor/build (assoc opts :bindings (bindings/build bindings)))
        (visitor/eval program)
-       (handle-output))))
+       (handle-output opts))))
 
 (defn parse-eval
   "Merged parsing and evaluation of a CEL expression.
