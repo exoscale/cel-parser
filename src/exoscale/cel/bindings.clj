@@ -72,7 +72,7 @@
   (as-binding [this]
     (expr/make-double this))
   nil
-  (as-binding [this]
+  (as-binding [_]
     (expr/null))
   clojure.lang.PersistentArrayMap
   (as-binding [this]
