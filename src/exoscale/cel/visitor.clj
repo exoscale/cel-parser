@@ -9,7 +9,7 @@
   (:import exoscale.cel.CELBaseVisitor
            exoscale.cel.CELParser$ExprContext))
 
-;; (set! *warn-on-reflection* true)
+;; (set! *warn-on-reflection* false)
 
 (defn- ctx->bytes->text
   ^String [^exoscale.cel.CELParser$BytesContext ctx]
@@ -20,7 +20,7 @@
   (-> ctx .STRING .getText))
 
 (defn- ctx->num-uint->text
-  ^String [ctx] ; ?
+  ^String [^exoscale.cel.CELParser$UintContext ctx]
   (-> ctx .NUM_UINT .getText))
 
 (defn- ctx->num-int->text
@@ -103,7 +103,6 @@
             (expr/error (ex-message e))))))
     (visitCreateList [^exoscale.cel.CELParser$CreateListContext ctx]
       (let [elems (for [e (some-> ctx .elems .expr)]
-                    (prn (type this) (type e))
                     (.visit this e))]
         (expr/make-list elems)))
     (visitCreateStruct [^exoscale.cel.CELParser$CreateStructContext ctx]
