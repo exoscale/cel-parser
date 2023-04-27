@@ -56,5 +56,3 @@
        (handle-output config)))
   ([input]
    (parse-eval {} input)))
-
-(parse-eval "true == true && true == 1")
