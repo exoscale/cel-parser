@@ -19,21 +19,22 @@
   "Extract body from a valid string representation"
   [input]
   (let [literal? (contains? #{\r \R} (first input))
-        input (cond-> input literal? (subs 1))]
-    (when (not= (first input) (last input))
+        input (cond-> input literal? (subs 1))
+        input-len (count input)]
+    (when (not= (first input) (subs input (dec input-len)))
       (ex-unable-to-escape-input! input))
     [literal?
      (cond
        (and (str/starts-with? input "'''")
             (str/ends-with? input "'''"))
-       (subs input 3 (- (count input) 3))
+       (subs input 3 (- input-len 3))
 
        (and (str/starts-with? input "\"\"\"")
             (str/ends-with? input "\"\"\""))
-       (subs input 3 (- (count input) 3))
+       (subs input 3 (- input-len 3))
 
        :else
-       (subs input 1 (- (count input) 1)))]))
+       (subs input 1 (- input-len 1)))]))
 
 (defn- ubyte->byte
   "Unsigned to signed conversion for bytes"
