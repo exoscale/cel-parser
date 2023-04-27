@@ -12,23 +12,23 @@
 ;; (set! *warn-on-reflection* true)
 
 (defn- ctx->bytes->text
-  ^String [ctx]
+  ^String [^exoscale.cel.CELParser$BytesContext ctx]
   (-> ctx .BYTES .getText))
 
 (defn- ctx->string->text
-  ^String [ctx]
+  ^String [^exoscale.cel.CELParser$StringContext ctx]
   (-> ctx .STRING .getText))
 
 (defn- ctx->num-uint->text
-  ^String [ctx]
+  ^String [ctx] ; ?
   (-> ctx .NUM_UINT .getText))
 
 (defn- ctx->num-int->text
-  ^String [ctx]
+  ^String [^exoscale.cel.CELParser$IntContext ctx]
   (-> ctx .NUM_INT .getText))
 
 (defn- ctx->num-float->text
-  ^String [ctx]
+  ^String [^exoscale.cel.CELParser$DoubleContext ctx]
   (-> ctx .NUM_FLOAT .getText))
 
 (defn- parse-long
@@ -103,6 +103,7 @@
             (expr/error (ex-message e))))))
     (visitCreateList [^exoscale.cel.CELParser$CreateListContext ctx]
       (let [elems (for [e (some-> ctx .elems .expr)]
+                    (prn (type this) (type e))
                     (.visit this e))]
         (expr/make-list elems)))
     (visitCreateStruct [^exoscale.cel.CELParser$CreateStructContext ctx]
