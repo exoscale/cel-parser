@@ -6,8 +6,7 @@
             [exoscale.cel.bindings :as bindings]
             [exoscale.cel.expr :as expr]
             [exoscale.cel.unescape :as unescape])
-  (:import exoscale.cel.CELBaseVisitor
-           exoscale.cel.CELParser$ExprContext))
+  (:import exoscale.cel.CELBaseVisitor))
 
 (set! *warn-on-reflection* true)
 

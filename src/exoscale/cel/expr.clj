@@ -2,11 +2,16 @@
   "Expression evaluation primitives"
   (:require [clojure.string  :as str]
             [clojure.instant :as instant])
-  (:import java.nio.charset.StandardCharsets
-           java.nio.ByteBuffer)
+  (:import java.nio.charset.Charset
+           java.nio.charset.StandardCharsets
+           java.nio.ByteBuffer
+           java.sql.Timestamp
+           java.time.Duration)
   (:refer-clojure :exclude [bool int bool? int? string? double?
                             number? nil? bytes bytes? update
                             any? map? val true? false? eval]))
+
+(set! *warn-on-reflection* true)
 
 (defprotocol TypedValue
   (typeof [this] "report value type")
@@ -135,14 +140,14 @@
   (val [_] x)
   (equal? [_ other]
     (BoolType.
-     (java.util.Arrays/equals x (val other))))
+     (java.util.Arrays/equals ^bytes x ^bytes (val other))))
   (unwrap [_] x)
   Sizable
   (sizeof [_]
     (IntType. (count x)))
   Stringable
   (as-string [_]
-    (.decode @decoder (ByteBuffer/wrap x)))
+    (.decode ^Charset @decoder (ByteBuffer/wrap ^bytes x)))
   Comparable
   (compareTo [_ other]
     (loop [x (seq x)
@@ -456,7 +461,7 @@
 (defn negate-double [x]    (update x * -1.0))
 (defn report-type [x]      (if (error? x) x (TypeType. (typeof x))))
 (defn to-double [x]        (DoubleType. (double (val x))))
-(defn to-bytes [x]         (BytesType. (.getBytes (val x))))
+(defn to-bytes [x]         (BytesType. (.getBytes ^String (val x))))
 
 (defn m-contains [x y]    (bool (contains? (val x) y)))
 
@@ -502,10 +507,10 @@
       (ErrorType. (ex-message e)))))
 
 (defn t->int [x]
-  (-> x val .toInstant .getEpochSecond int))
+  (-> x ^Timestamp val .toInstant .getEpochSecond int))
 
 (defn make-duration [x]
-  (if (> (long (/ (.toDays (.abs x)) 365)) 291)
+  (if (> (long (/ (.toDays (.abs ^Duration x)) 365)) 291)
     (ErrorType. "duration too long")
     (DurationType. x)))
 
@@ -540,10 +545,10 @@
 
       (instance? TimestampType t)
       (make-timestamp
-       (java.util.Date/from (.plus (.toInstant (val t)) (val d))))
+       (java.util.Date/from (.plus (.toInstant ^Timestamp (val t)) ^Duration (val d))))
 
       :else
-      (update t #(.plus %1 %2) (val d)))
+      (update t #(.plus ^Duration %1 ^Duration %2) (val d)))
     (catch Exception e
       (ErrorType. (ex-message e)))))
 
@@ -552,18 +557,18 @@
   (try
     (cond
       (and (instance? TimestampType t) (instance? TimestampType d))
-      (make-duration (java.time.Duration/between (.toInstant (val t))
-                                                 (.toInstant (val d))))
+      (make-duration (java.time.Duration/between (.toInstant ^Timestamp (val t))
+                                                 (.toInstant ^Timestamp (val d))))
 
       (and (instance? DurationType t) (instance? TimestampType d))
       (sub-time-duration d t)
 
       (instance? TimestampType t)
       (make-timestamp
-       (java.util.Date/from (.minus (.toInstant (val t)) (val d))))
+       (java.util.Date/from (.minus (.toInstant ^Timestamp (val t)) ^Duration (val d))))
 
       :else
-      (update t #(.minus %1 %2) (val d)))
+      (update t #(.minus ^Duration %1 ^Duration %2) (val d)))
     (catch Exception e
       (ErrorType. (or (ex-message e) "npe")))))
 
@@ -649,7 +654,7 @@
   ([t]
    (try
      (if (duration? t)
-       (IntType. (-> t val .toHours))
+       (IntType. (-> t ^Duration val .toHours))
        (get-hours t (StringType. "UTC")))
      (catch Exception e
        (ErrorType. (ex-message e)))))
@@ -667,7 +672,7 @@
   ([t]
    (try
      (if (duration? t)
-       (IntType. (-> t val .toMinutes))
+       (IntType. (-> t ^Duration val .toMinutes))
        (get-minutes t (StringType. "UTC")))
      (catch Exception e
        (ErrorType. (ex-message e)))))
@@ -685,7 +690,7 @@
   ([t]
    (try
      (if (duration? t)
-       (IntType. (-> t val .toSeconds))
+       (IntType. (-> t ^Duration val .toSeconds))
        (get-milliseconds t (StringType. "UTC")))
      (catch Exception e
        (ErrorType. (ex-message e)))))
@@ -703,7 +708,7 @@
   ([t]
    (try
      (if (duration? t)
-       (IntType. (-> t val .toSeconds))
+       (IntType. (-> t ^Duration val .toSeconds))
        (get-seconds t (StringType. "UTC")))
      (catch Exception e
        (ErrorType. (ex-message e)))))

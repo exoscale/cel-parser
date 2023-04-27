@@ -38,7 +38,7 @@
                 line (assoc :line line)
                 char (assoc :char char)
                 (instance? Parser recognizer)
-                (assoc :stack (-> recognizer .getRuleInvocationStack reverse))
+                (assoc :stack (-> ^Parser recognizer .getRuleInvocationStack reverse))
                 (some? ex)
                 (into (recognition-exception->map ex)))))))
 
