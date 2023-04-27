@@ -2,6 +2,8 @@
   "Helpers to create binding maps."
   (:require [exoscale.cel.expr :as expr]))
 
+(set! *warn-on-reflection* true)
+
 (defprotocol Bindable
   (as-binding [this]
     "Yield a value that is valid for use as a CEL parser binding"))

@@ -7,6 +7,8 @@
             [exoscale.cel.expr :as expr]
             [exoscale.cel.visitor :as visitor]))
 
+(set! *warn-on-reflection* true)
+
 (defn make-program
   "Build a program from the given input string. Throws for invalid
    expressions."
@@ -20,7 +22,7 @@
         :or {translate-result? true
              throw-on-error? false}}]
   (when (and (expr/error? res) (true? throw-on-error?))
-    (throw (RuntimeException. (expr/val res))))
+    (throw (RuntimeException. ^String (expr/val res))))
   (cond-> res (true? translate-result?) expr/unwrap))
 
 (defn eval-for

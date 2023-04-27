@@ -8,6 +8,8 @@
                                  BaseErrorListener
                                  RecognitionException)))
 
+(set! *warn-on-reflection* true)
+
 ;; recognition-exception->map is shamelessly borrowed from clj-antlr
 ;; https://github.com/aphyr/clj-antlr
 (defn recognition-exception->map
