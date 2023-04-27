@@ -1,10 +1,10 @@
 (ns ^:no-doc exoscale.cel.expr
   "Expression evaluation primitives"
-  (:require [clojure.string  :as str]
-            [clojure.instant :as instant])
-  (:import java.nio.charset.CharsetDecoder
+  (:require [clojure.instant :as instant]
+            [clojure.string :as str])
+  (:import java.nio.ByteBuffer
+           java.nio.charset.CharsetDecoder
            java.nio.charset.StandardCharsets
-           java.nio.ByteBuffer
            java.sql.Timestamp
            java.time.Duration)
   (:refer-clojure :exclude [bool int bool? int? string? double?
@@ -17,16 +17,44 @@
   (typeof [this] "report value type")
   (val [this] "extract value")
   (equal? [this other] "equality test")
-  (unwrap [this]))
+  (unwrap [this])
+  (typed-value? [this] "satisfies? shim"))
+
+(extend-protocol TypedValue
+  Object
+  (typed-value? [_] false)
+  nil
+  (typed-value? [_] false))
 
 (defprotocol Sizable
-  (sizeof [this] "report size"))
+  (sizeof [this] "report size")
+  (sizable? [this] "satisfies? shim"))
+
+(extend-protocol Sizable
+  Object
+  (sizable? [_] false)
+  nil
+  (sizable? [_] false))
 
 (defprotocol Stringable
-  (as-string [this] "coerce to string"))
+  (as-string [this] "coerce to string")
+  (stringable? [this] "satisfies? shim"))
+
+(extend-protocol Stringable
+  Object
+  (stringable? [_] false)
+  nil
+  (stringable? [_] false))
 
 (defprotocol Indexable
-  (index [this k] "select an index or key"))
+  (index [this k] "select an index or key")
+  (indexable? [this] "satisfies? shim"))
+
+(extend-protocol indexable?
+  Object
+  (indexable? [_] false)
+  nil
+  (indexable? [_] false))
 
 (defprotocol Container
   (has-element [this e]))
@@ -172,8 +200,8 @@
   (unwrap [_] (mapv unwrap elems))
   (equal? [_ other]
     (let [other-elems (val other)
-          c1types     (set (map typeof elems))
-          c2types     (set (map typeof other-elems))]
+          c1types (set (map typeof elems))
+          c2types (set (map typeof other-elems))]
       (cond
         (= (count elems) (count other-elems) 1)
         (if (= c1types c2types)
@@ -197,17 +225,18 @@
   Indexable
   (index [_ index]
     (nth elems (val index) (ErrorType. "index out of range")))
+  (indexable? [_] true)
   Container
   (has-element [_ e]
-    (let [types    (set (map typeof elems))
+    (let [types (set (map typeof elems))
           uniform? (= 1 (count types))
-          found?   (boolean
-                    (seq
-                     (for [candidate elems
-                           :let [eq? (and (= (typeof candidate) (typeof e))
-                                          (equal? candidate e))]
-                           :when (and eq? (instance? BoolType eq?) (val eq?))]
-                       true)))]
+          found? (boolean
+                  (seq
+                   (for [candidate elems
+                         :let [eq? (and (= (typeof candidate) (typeof e))
+                                        (equal? candidate e))]
+                         :when (and eq? (instance? BoolType eq?) (val eq?))]
+                     true)))]
       (cond
         found?
         (BoolType. true)
@@ -263,11 +292,11 @@
     (IntType. (count entries)))
   Container
   (has-element [_ e]
-    (let [types    (set (map typeof (keys entries)))
-          found?   (boolean
-                    (first (for [candidate (keys entries)]
-                             (and (= (typeof candidate) (typeof e))
-                                  (equal? candidate e)))))]
+    (let [types (set (map typeof (keys entries)))
+          found? (boolean
+                  (first (for [candidate (keys entries)]
+                           (and (= (typeof candidate) (typeof e))
+                                (equal? candidate e)))))]
       (cond
         (and found? (= :bytes (typeof e)))
         (ErrorType. "unhashable type")
@@ -288,7 +317,8 @@
         (BoolType. false))))
   Indexable
   (index [_ k]
-    (get entries k (ErrorType. "no such key"))))
+    (get entries k (ErrorType. "no such key")))
+  (indexable? [_] true))
 
 (defrecord ObjectType [subtype x]
   TypedValue
@@ -353,43 +383,43 @@
 ;; builders
 ;; ========
 
-(defn null        []    (NullType.))
-(defn bool        [x]   (BoolType. (boolean x)))
-(defn int         [x]   (IntType. x))
-(defn uint        [x]   (UintType. x))
-(defn make-double [x]   (DoubleType. x))
-(defn string      [x]   (StringType. x))
-(defn bytes       [x]   (BytesType. (cond-> x (coll? x) byte-array)))
-(defn make-list   [x]   (CollType. (vec x)))
-(defn make-map    [x]   (MapType. x))
-(defn object      [t o] (ObjectType. t o))
-(defn make-type   [t]   (TypeType. t))
-(defn error       [m]   (ErrorType. m))
+(defn null [] (NullType.))
+(defn bool [x] (BoolType. (boolean x)))
+(defn int [x] (IntType. x))
+(defn uint [x] (UintType. x))
+(defn make-double [x] (DoubleType. x))
+(defn string [x] (StringType. x))
+(defn bytes [x] (BytesType. (cond-> x (coll? x) byte-array)))
+(defn make-list [x] (CollType. (vec x)))
+(defn make-map [x] (MapType. x))
+(defn object [t o] (ObjectType. t o))
+(defn make-type [t] (TypeType. t))
+(defn error [m] (ErrorType. m))
 
 ;; predicates
 ;; ==========
 
-(def null?       (partial instance? NullType))
-(def bool?       (partial instance? BoolType))
-(def true?       #(and (bool? %) (= true (val %))))
-(def false?      #(and (bool? %) (= false (val %))))
-(def int?        (partial instance? IntType))
-(def uint?       (partial instance? UintType))
-(def double?     (partial instance? DoubleType))
-(def number?     (some-fn int? uint? double?))
-(def string?     (partial instance? StringType))
-(def bytes?      (partial instance? BytesType))
+(def null? (partial instance? NullType))
+(def bool? (partial instance? BoolType))
+(def true? #(and (bool? %) (= true (val %))))
+(def false? #(and (bool? %) (= false (val %))))
+(def int? (partial instance? IntType))
+(def uint? (partial instance? UintType))
+(def double? (partial instance? DoubleType))
+(def number? (some-fn int? uint? double?))
+(def string? (partial instance? StringType))
+(def bytes? (partial instance? BytesType))
 (def collection? (partial instance? CollType))
-(def map?        (partial instance? MapType))
-(def object?     (partial instance? ObjectType))
-(def any?        (comp some? typeof))
-(def error?      (partial instance? ErrorType))
+(def map? (partial instance? MapType))
+(def object? (partial instance? ObjectType))
+(def any? (comp some? typeof))
+(def error? (partial instance? ErrorType))
 (def comparable? (partial instance? Comparable))
-(def indexable?  (partial satisfies? Indexable))
-(def sizable?    (partial satisfies? Sizable))
-(def stringable? (partial satisfies? Stringable))
-(def timestamp?  (partial instance? TimestampType))
-(def duration?   (partial instance? DurationType))
+;; (def indexable?  (partial satisfies? Indexable))
+;; (def sizable?    (partial satisfies? Sizable))
+;; (def stringable? (partial satisfies? Stringable))
+(def timestamp? (partial instance? TimestampType))
+(def duration? (partial instance? DurationType))
 
 (defn update
   [x f & args]
@@ -432,38 +462,38 @@
 ;; Helpers
 ;; =======
 
-(defn modulo [x y]         (long! (update x rem (val y))))
-(defn mul [x y]            (long! (update x * (val y))))
-(defn mul-double [x y]     (DoubleType. (* (double (val x)) (double (val y)))))
-(defn add [x y]            (long! (update x + (val y))))
-(defn add-double [x y]     (DoubleType. (+ (double (val x)) (double (val y)))))
-(defn add-string [x y]     (update x str (val y)))
-(defn add-coll [x y]       (update x concat (val y)))
-(defn add-bytes [x y]      (bytes (byte-array (concat (seq (val x))
-                                                      (seq (val y))))))
-(defn sub [x y]            (long! (update x - (val y))))
-(defn sub-double [x y]     (DoubleType. (- (double (val x)) (double (val y)))))
-(defn div [x y]            (long!
-                            (if (= #{Long/MIN_VALUE -1} (set [(val x) (val y)]))
-                              (ErrorType. "integer overflow")
-                              (update x #(quot %1 %2) (val y)))))
-(defn div-double [x y]     (DoubleType. (/ (double (val x)) (double (val y)))))
-(defn lte-compare [x y]    (bool (<= (compare x y) 0)))
-(defn lt-compare [x y]     (bool (< (compare x y) 0)))
-(defn gte-compare [x y]    (bool (>= (compare x y) 0)))
-(defn gt-compare  [x y]    (bool (> (compare x y) 0)))
-(defn s-matches [s re]     (bool (re-matches (re-pattern (val re)) (val s))))
-(defn s-contains [s re]    (bool (str/includes? (val s) (val re))))
+(defn modulo [x y] (long! (update x rem (val y))))
+(defn mul [x y] (long! (update x * (val y))))
+(defn mul-double [x y] (DoubleType. (* (double (val x)) (double (val y)))))
+(defn add [x y] (long! (update x + (val y))))
+(defn add-double [x y] (DoubleType. (+ (double (val x)) (double (val y)))))
+(defn add-string [x y] (update x str (val y)))
+(defn add-coll [x y] (update x concat (val y)))
+(defn add-bytes [x y] (bytes (byte-array (concat (seq (val x))
+                                                 (seq (val y))))))
+(defn sub [x y] (long! (update x - (val y))))
+(defn sub-double [x y] (DoubleType. (- (double (val x)) (double (val y)))))
+(defn div [x y] (long!
+                 (if (= #{Long/MIN_VALUE -1} (set [(val x) (val y)]))
+                   (ErrorType. "integer overflow")
+                   (update x #(quot %1 %2) (val y)))))
+(defn div-double [x y] (DoubleType. (/ (double (val x)) (double (val y)))))
+(defn lte-compare [x y] (bool (<= (compare x y) 0)))
+(defn lt-compare [x y] (bool (< (compare x y) 0)))
+(defn gte-compare [x y] (bool (>= (compare x y) 0)))
+(defn gt-compare [x y] (bool (> (compare x y) 0)))
+(defn s-matches [s re] (bool (re-matches (re-pattern (val re)) (val s))))
+(defn s-contains [s re] (bool (str/includes? (val s) (val re))))
 (defn s-starts-with [s re] (bool (str/starts-with? (val s) (val re))))
-(defn s-ends-with [s re]   (bool (str/ends-with? (val s) (val re))))
-(defn not-equal? [e1 e2]   (update (equal? e1 e2) not))
-(defn negate-int [x]       (long! (update x * -1)))
-(defn negate-double [x]    (update x * -1.0))
-(defn report-type [x]      (if (error? x) x (TypeType. (typeof x))))
-(defn to-double [x]        (DoubleType. (double (val x))))
-(defn to-bytes [x]         (BytesType. (.getBytes ^String (val x))))
+(defn s-ends-with [s re] (bool (str/ends-with? (val s) (val re))))
+(defn not-equal? [e1 e2] (update (equal? e1 e2) not))
+(defn negate-int [x] (long! (update x * -1)))
+(defn negate-double [x] (update x * -1.0))
+(defn report-type [x] (if (error? x) x (TypeType. (typeof x))))
+(defn to-double [x] (DoubleType. (double (val x))))
+(defn to-bytes [x] (BytesType. (.getBytes ^String (val x))))
 
-(defn m-contains [x y]    (bool (contains? (val x) y)))
+(defn m-contains [x y] (bool (contains? (val x) y)))
 
 (defn to-int [x]
   (let [i (long! x)]
@@ -474,9 +504,9 @@
 (defn to-uint [x]
   (let [i (long! x)]
     (cond
-      (error? i)     i
+      (error? i) i
       (neg? (val i)) (ErrorType. "conversion error")
-      :else          (UintType. (val i)))))
+      :else (UintType. (val i)))))
 
 (defn s->double [x]
   (try
@@ -750,12 +780,12 @@
    {:when :add :on [string? string?] :handler add-string}
    {:when :add :on [collection? collection?] :handler add-coll}
    {:when :add :on [bytes? bytes?] :handler add-bytes}
-   {:when :add :on [timestamp? duration?]  :handler add-time-duration}
-   {:when :sub :on [timestamp? duration?]  :handler sub-time-duration}
-   {:when :sub :on [timestamp? timestamp?]  :handler sub-time-duration}
-   {:when :add :on [duration? timestamp?]  :handler add-time-duration}
-   {:when :add :on [duration? duration?]  :handler add-time-duration}
-   {:when :sub :on [duration? duration?]  :handler sub-time-duration}
+   {:when :add :on [timestamp? duration?] :handler add-time-duration}
+   {:when :sub :on [timestamp? duration?] :handler sub-time-duration}
+   {:when :sub :on [timestamp? timestamp?] :handler sub-time-duration}
+   {:when :add :on [duration? timestamp?] :handler add-time-duration}
+   {:when :add :on [duration? duration?] :handler add-time-duration}
+   {:when :sub :on [duration? duration?] :handler sub-time-duration}
    {:when :sub :on [int? int?] :handler sub}
    {:when :sub :on [uint? uint?] :handler sub}
    {:when :sub :on [double? double?] :handler sub-double}
@@ -839,12 +869,12 @@
   [matchers args]
   (first
    (for [{:keys [handler] :as m} matchers
-         :when                   (and (if-let [on (:on m)]
-                                        (args-match? on args)
-                                        true)
-                                      (if-let [guard (:guard m)]
-                                        (guard args)
-                                        true))]
+         :when (and (if-let [on (:on m)]
+                      (args-match? on args)
+                      true)
+                    (if-let [guard (:guard m)]
+                      (guard args)
+                      true))]
      handler)))
 
 (defn eval

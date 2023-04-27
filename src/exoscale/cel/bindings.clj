@@ -12,24 +12,24 @@
   "Translate a value into another valid for use as a CEL parser binding.
    Handles aggregate types (which `as-binding` does not)."
   [b]
-  (cond (satisfies? expr/TypedValue b) b
-        (map? b)                       (as-binding (into {} b))
-        (coll? b)                      (as-binding (into [] b))
-        :else                          (as-binding b)))
+  (cond (expr/typed-value? b) b
+        (map? b) (as-binding (into {} b))
+        (coll? b) (as-binding (into [] b))
+        :else (as-binding b)))
 
 (def defaults
   "Default bindings to install"
-  {:bool      (expr/make-type :bool)
-   :int       (expr/make-type :int)
-   :uint      (expr/make-type :uint)
-   :double    (expr/make-type :double)
-   :string    (expr/make-type :string)
-   :null      (expr/make-type :null)
-   :map       (expr/make-type :map)
-   :list      (expr/make-type :list)
-   :bytes     (expr/make-type :bytes)
+  {:bool (expr/make-type :bool)
+   :int (expr/make-type :int)
+   :uint (expr/make-type :uint)
+   :double (expr/make-type :double)
+   :string (expr/make-type :string)
+   :null (expr/make-type :null)
+   :map (expr/make-type :map)
+   :list (expr/make-type :list)
+   :bytes (expr/make-type :bytes)
    :null_type (expr/make-type :null_type)
-   :type      (expr/make-type :type)})
+   :type (expr/make-type :type)})
 
 (defn build
   "Build a binding map, throws on invalid input."
