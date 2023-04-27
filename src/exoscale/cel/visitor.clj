@@ -35,7 +35,7 @@
   [s radix]
   (try (Long/parseLong s radix)
        (catch IllegalArgumentException _
-         (BigInteger. ^String s radix))))
+         (BigInteger. ^String s (int radix)))))
 
 (defn- parse-int
   [s]
