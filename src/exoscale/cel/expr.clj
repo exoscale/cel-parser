@@ -2,7 +2,7 @@
   "Expression evaluation primitives"
   (:require [clojure.string  :as str]
             [clojure.instant :as instant])
-  (:import java.nio.charset.Charset
+  (:import java.nio.charset.CharsetDecoder
            java.nio.charset.StandardCharsets
            java.nio.ByteBuffer
            java.sql.Timestamp
@@ -147,7 +147,7 @@
     (IntType. (count x)))
   Stringable
   (as-string [_]
-    (.decode ^Charset @decoder (ByteBuffer/wrap ^bytes x)))
+    (.decode ^CharsetDecoder @decoder (ByteBuffer/wrap ^bytes x)))
   Comparable
   (compareTo [_ other]
     (loop [x (seq x)
