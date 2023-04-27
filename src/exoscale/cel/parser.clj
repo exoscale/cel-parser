@@ -2,10 +2,12 @@
   "A Clojure parser and interpreter for the Google
    Common Expression Language (CEL) syntax as defined
    in https://github.com/google/cel-spec/blob/master/doc/langdef.md"
-  (:require [exoscale.cel.expr     :as expr]
+  (:require [exoscale.cel.antlr :as antlr]
             [exoscale.cel.bindings :as bindings]
-            [exoscale.cel.visitor  :as visitor]
-            [exoscale.cel.antlr    :as antlr]))
+            [exoscale.cel.expr :as expr]
+            [exoscale.cel.visitor :as visitor]))
+
+(set! *warn-on-reflection* true)
 
 (defn make-program
   "Build a program from the given input string. Throws for invalid
@@ -17,10 +19,10 @@
   "Output handler, handles both `throw-on-error?` and
    `translate-result?` keys in the provided configuration."
   [res {:keys [throw-on-error? translate-result?]
-        :or   {translate-result? true
-               throw-on-error?   false}}]
+        :or {translate-result? true
+             throw-on-error? false}}]
   (when (and (expr/error? res) (true? throw-on-error?))
-    (throw (RuntimeException. (expr/val res))))
+    (throw (RuntimeException. ^String (expr/val res))))
   (cond-> res (true? translate-result?) expr/unwrap))
 
 (defn eval-for

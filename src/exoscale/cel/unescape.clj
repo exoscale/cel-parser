@@ -3,6 +3,8 @@
   (:refer-clojure :exclude [bytes])
   (:require [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (defn ex-unable-to-escape-input! [input]
   (throw (ex-info "unable to escape input" {:input input})))
 
@@ -113,5 +115,5 @@
       (ex-unable-to-escape-input! input))
     (let [[literal? s] (extract-body input)]
       (if (or literal? (not (str/includes? s "\\")))
-        (.getBytes s)
+        (.getBytes ^String s)
         (unescape-bytes s)))))
