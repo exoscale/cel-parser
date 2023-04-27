@@ -3,6 +3,9 @@
   (:refer-clojure :exclude [bytes])
   (:require [clojure.string :as str]))
 
+(defn ex-unable-to-escape-input! [input]
+  (throw (ex-info "unable to escape input" {:input input})))
+
 (defn- replace-newlines
   "CEL strings normalize all newline types to line feeds."
   [s]
@@ -12,11 +15,11 @@
 
 (defn- extract-body
   "Extract body from a valid string representation"
-  [input err]
+  [input]
   (let [literal? (contains? #{\r \R} (first input))
-        input    (cond-> input literal? (subs 1))]
+        input (cond-> input literal? (subs 1))]
     (when (not= (first input) (last input))
-      (throw err))
+      (ex-unable-to-escape-input! input))
     [literal?
      (cond
        (and (str/starts-with? input "'''")
@@ -42,7 +45,7 @@
       (str/replace "\\?" "?")
       (str/replace "\\'" "'")
       (str/replace "\\\"" "\"")
-      (str/replace "\\`"  "`")
+      (str/replace "\\`" "`")
       (str/replace "\\a" "\u0007")
       (str/replace "\\b" "\b")
       (str/replace "\\f" "\f")
@@ -92,25 +95,23 @@
   "Apply escape rules for UTF-8 strings as explained in
    https://github.com/google/cel-spec/blob/master/doc/langdef.md#string-and-bytes-values"
   [input]
-  (let [input (replace-newlines input)
-        err   (ex-info "unable to escape string" {:input input})]
+  (let [input (replace-newlines input)]
     (when (< (count input) 2)
-      (throw err))
-    (let [[literal? s] (extract-body input err)]
+      (ex-unable-to-escape-input! input))
+    (let [[literal? s] (extract-body input)]
       (cond
-        literal?                     s
+        literal? s
         (not (str/includes? s "\\")) s
-        :else                        (unescape-chars s)))))
+        :else (unescape-chars s)))))
 
 (defn bytes
   "Apply escape rules for byte strings as explained in
    https://github.com/google/cel-spec/blob/master/doc/langdef.md#string-and-bytes-values"
   [input]
-  (let [input (replace-newlines input)
-        err   (ex-info "unable to escape bytes" {:input input})]
+  (let [input (replace-newlines input)]
     (when (< (count input) 2)
-      (throw err))
-    (let [[literal? s] (extract-body input err)]
+      (ex-unable-to-escape-input! input))
+    (let [[literal? s] (extract-body input)]
       (if (or literal? (not (str/includes? s "\\")))
         (.getBytes s)
         (unescape-bytes s)))))
