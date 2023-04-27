@@ -50,7 +50,7 @@
   (index [this k] "select an index or key")
   (indexable? [this] "satisfies? shim"))
 
-(extend-protocol indexable?
+(extend-protocol Indexable
   Object
   (indexable? [_] false)
   nil
