@@ -153,7 +153,7 @@
             (expr/error (ex-message e))))))
     (visitSelectOrCall [^exoscale.cel.CELParser$SelectOrCallContext ctx]
       (let [id (-> ctx .id .getText str keyword)
-            member
+            member (.visit ^CELBaseVisitor this (.member ctx))
             select? (nil? (.open ctx))
             argseq (some->> ctx .args .expr)]
         (cond
