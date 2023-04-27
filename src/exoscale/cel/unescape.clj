@@ -17,11 +17,11 @@
 
 (defn- extract-body
   "Extract body from a valid string representation"
-  [input]
+  [^String input]
   (let [literal? (contains? #{\r \R} (first input))
         input (cond-> input literal? (subs 1))
         input-len (count input)]
-    (when (not= (first input) (subs input (dec input-len)))
+    (when (not= (first input) (.charAt input (dec input-len)))
       (ex-unable-to-escape-input! input))
     [literal?
      (cond
