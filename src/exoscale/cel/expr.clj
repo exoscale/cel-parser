@@ -62,14 +62,17 @@
 (defrecord BoolType [x]
   TypedValue
   (typeof [_] :bool)
+
   (val [_] x)
   (equal? [this o] (assoc this :x (= this o)))
   (unwrap [_] x)
+  (typed-value? [_] true)
   Comparable
   (compareTo [this other]
     (compare (val this) (val other)))
   Stringable
-  (as-string [_] (str x)))
+  (as-string [_] (str x))
+  (stringable? [_] true))
 
 (defrecord NullType []
   TypedValue
@@ -77,8 +80,10 @@
   (val [_] nil)
   (unwrap [_] nil)
   (equal? [this o] (BoolType. (= this o)))
+  (typed-value? [_] true)
   Stringable
-  (as-string [_] "null_type"))
+  (as-string [_] "null_type")
+  (stringable? [_] true))
 
 (defrecord ErrorType [msg]
   TypedValue
@@ -86,7 +91,8 @@
   (val [_] msg)
   (unwrap [_] (ex-info msg {}))
   (equal? [_ _]
-    (BoolType. false)))
+    (BoolType. false))
+  (typed-value? [_] true))
 
 (defn bool-or
   [x y]
@@ -114,11 +120,13 @@
   (val [_] x)
   (unwrap [_] x)
   (equal? [this o] (BoolType. (= this o)))
+  (typed-value? [_] true)
   Comparable
   (compareTo [this other]
     (compare (val this) (val other)))
   Stringable
-  (as-string [_] (str x)))
+  (as-string [_] (str x))
+  (stringable? [_] true))
 
 (defrecord UintType [x]
   TypedValue
@@ -126,11 +134,13 @@
   (val [_] x)
   (unwrap [_] x)
   (equal? [this o] (BoolType. (= this o)))
+  (typed-value? [_] true)
   Comparable
   (compareTo [this other]
     (compare (val this) (val other)))
   Stringable
-  (as-string [_] (str x)))
+  (as-string [_] (str x))
+  (stringable? [_] true))
 
 (defrecord DoubleType [x]
   TypedValue
@@ -138,11 +148,13 @@
   (val [_] x)
   (unwrap [_] x)
   (equal? [this o] (BoolType. (= this o)))
+  (typed-value? [_] true)
   Comparable
   (compareTo [this other]
     (compare (val this) (val other)))
   Stringable
-  (as-string [_] (str x)))
+  (as-string [_] (str x))
+  (stringable? [_] true))
 
 (defrecord StringType [x]
   TypedValue
@@ -150,14 +162,17 @@
   (val [_] x)
   (equal? [this o] (BoolType. (= this o)))
   (unwrap [_] x)
+  (typed-value? [_] true)
   Comparable
   (compareTo [this other]
     (compare (val this) (val other)))
   Sizable
   (sizeof [_]
     (IntType. (count x)))
+  (sizable? [_] true)
   Stringable
-  (as-string [_] x))
+  (as-string [_] x)
+  (stringable? [_] true))
 
 (def decoder
   (delay (.newDecoder StandardCharsets/UTF_8)))
@@ -170,12 +185,15 @@
     (BoolType.
      (java.util.Arrays/equals ^bytes x ^bytes (val other))))
   (unwrap [_] x)
+  (typed-value? [_] true)
   Sizable
   (sizeof [_]
     (IntType. (count x)))
+  (sizable? [_] true)
   Stringable
   (as-string [_]
     (.decode ^CharsetDecoder @decoder (ByteBuffer/wrap ^bytes x)))
+  (stringable? [_] true)
   Comparable
   (compareTo [_ other]
     (loop [x (seq x)
@@ -198,6 +216,7 @@
   (typeof [_] :list)
   (val [_] elems)
   (unwrap [_] (mapv unwrap elems))
+  (typed-value? [_] true)
   (equal? [_ other]
     (let [other-elems (val other)
           c1types (set (map typeof elems))
@@ -222,6 +241,7 @@
   Sizable
   (sizeof [_]
     (IntType. (count elems)))
+  (sizable? [_] true)
   Indexable
   (index [_ index]
     (nth elems (val index) (ErrorType. "index out of range")))
@@ -255,6 +275,7 @@
   (typeof [_] :map)
   (val [_] entries)
   (unwrap [_] (into {} (for [[k v] entries] [(unwrap k) (unwrap v)])))
+  (typed-value? [_] true)
   (equal? [_ other]
     (let [other-entries (val other)
           m1ktypes (set (map typeof (keys entries)))
@@ -290,6 +311,7 @@
   Sizable
   (sizeof [_]
     (IntType. (count entries)))
+  (sizable? [_] true)
   Container
   (has-element [_ e]
     (let [types (set (map typeof (keys entries)))
@@ -325,6 +347,7 @@
   (typeof [_] subtype)
   (val [_] x)
   (unwrap [_] x)
+  (typed-value? [_] true)
   (equal? [_ other]
     (BoolType.
      (and (subtype (typeof other)) (= x (val other))))))
@@ -334,18 +357,21 @@
   (typeof [_] :type)
   (val [_] x)
   (unwrap [this] this)
+  (typed-value? [_] true)
   (equal? [this other]
     (BoolType.
      (= this other)))
   Stringable
   (as-string [_]
-    (name x)))
+    (name x))
+  (stringable? [_] true))
 
 (defrecord TimestampType [x]
   TypedValue
   (typeof [_] "google.protobuf.Timestamp")
   (val [_] x)
   (unwrap [_] x)
+  (typed-value? [_] true)
   (equal? [this other]
     (BoolType.
      (= this other)))
@@ -354,13 +380,15 @@
     (compare (val this) (val other)))
   Stringable
   (as-string [_]
-    (str x)))
+    (str x))
+  (stringable? [_] true))
 
 (defrecord DurationType [x]
   TypedValue
   (typeof [_] "google.protobuf.Duration")
   (val [_] x)
   (unwrap [_] x)
+  (typed-value? [_] true)
   (equal? [this other]
     (BoolType.
      (= this other)))
@@ -369,7 +397,8 @@
     (compare (val this) (val other)))
   Stringable
   (as-string [_]
-    (str x)))
+    (str x))
+  (stringable? [_] true))
 
 (defn make-timestamp
   [t]
@@ -415,9 +444,6 @@
 (def any? (comp some? typeof))
 (def error? (partial instance? ErrorType))
 (def comparable? (partial instance? Comparable))
-;; (def indexable?  (partial satisfies? Indexable))
-;; (def sizable?    (partial satisfies? Sizable))
-;; (def stringable? (partial satisfies? Stringable))
 (def timestamp? (partial instance? TimestampType))
 (def duration? (partial instance? DurationType))
 
