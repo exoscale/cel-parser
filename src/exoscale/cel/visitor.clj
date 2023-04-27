@@ -31,6 +31,10 @@
   ^String [^exoscale.cel.CELParser$DoubleContext ctx]
   (-> ctx .NUM_FLOAT .getText))
 
+(defn expr-ctx->text
+  ^String [^exoscale.cel.CELParser$ExprContext ctx]
+  (.getText ctx))
+
 (defn- parse-long
   [s radix]
   (try (Long/parseLong s radix)
@@ -129,7 +133,7 @@
           (= :has id)
           (if (not= (count argseq) 1)
             (expr/error "wrong argument count for has")
-            (let [arg (.getText (first argseq))
+            (let [arg (expr-ctx->text (first argseq))
                   last-index (str/last-index-of arg ".")]
               (if (nil? last-index)
                 (expr/error "invalid arguments for has()")
@@ -170,8 +174,8 @@
             (expr/error "wrong input for map")
 
             :else
-            (let [binding (keyword (.getText (first argseq)))
-                  input (.getText (second argseq))]
+            (let [binding (keyword (expr-ctx->text (first argseq)))
+                  input (expr-ctx->text (second argseq))]
               (loop [[head & tail] (expr/val member)
                      res []]
                 (if (nil? head)
@@ -193,8 +197,8 @@
             (expr/error "wrong input for all")
 
             :else
-            (let [binding (keyword (.getText (first argseq)))
-                  input (.getText (second argseq))]
+            (let [binding (keyword (expr-ctx->text (first argseq)))
+                  input (expr-ctx->text (second argseq))]
               (loop [[head & tail] (cond-> (expr/val member)
                                      (expr/map? member)
                                      keys)
@@ -220,8 +224,8 @@
             (expr/error "wrong input for exists")
 
             :else
-            (let [binding (keyword (.getText (first argseq)))
-                  input (.getText (second argseq))]
+            (let [binding (keyword (expr-ctx->text (first argseq)))
+                  input (expr-ctx->text (second argseq))]
               (loop [[head & tail] (cond-> (expr/val member)
                                      (expr/map? member)
                                      keys)
@@ -247,8 +251,8 @@
             (expr/error "wrong input for exists")
 
             :else
-            (let [binding (keyword (.getText (first argseq)))
-                  input (.getText (second argseq))]
+            (let [binding (keyword (expr-ctx->text (first argseq)))
+                  input (expr-ctx->text (second argseq))]
               (loop [[head & tail] (cond-> (expr/val member)
                                      (expr/map? member)
                                      keys)
@@ -274,8 +278,8 @@
             (expr/error "wrong input for filter")
 
             :else
-            (let [binding (keyword (.getText (first argseq)))
-                  input (.getText (second argseq))]
+            (let [binding (keyword (expr-ctx->text (first argseq)))
+                  input (expr-ctx->text (second argseq))]
               (loop [[head & tail] (expr/val member)
                      res []]
                 (if (nil? head)
