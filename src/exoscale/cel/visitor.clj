@@ -1,18 +1,41 @@
 (ns ^:no-doc exoscale.cel.visitor
   "Visitor based parser."
   (:refer-clojure :exclude [eval parse-long])
-  (:require [exoscale.cel.expr     :as expr]
-            [exoscale.cel.unescape :as unescape]
+  (:require [clojure.string :as str]
+            [exoscale.cel.antlr :as antlr]
             [exoscale.cel.bindings :as bindings]
-            [exoscale.cel.antlr    :as antlr]
-            [clojure.string        :as str])
-  (:import exoscale.cel.CELBaseVisitor))
+            [exoscale.cel.expr :as expr]
+            [exoscale.cel.unescape :as unescape])
+  (:import exoscale.cel.CELBaseVisitor
+           exoscale.cel.CELParser$ExprContext))
+
+;; (set! *warn-on-reflection* true)
+
+(defn- ctx->bytes->text
+  ^String [ctx]
+  (-> ctx .BYTES .getText))
+
+(defn- ctx->string->text
+  ^String [ctx]
+  (-> ctx .STRING .getText))
+
+(defn- ctx->num-uint->text
+  ^String [ctx]
+  (-> ctx .NUM_UINT .getText))
+
+(defn- ctx->num-int->text
+  ^String [ctx]
+  (-> ctx .NUM_INT .getText))
+
+(defn- ctx->num-float->text
+  ^String [ctx]
+  (-> ctx .NUM_FLOAT .getText))
 
 (defn- parse-long
   [s radix]
   (try (Long/parseLong s radix)
        (catch IllegalArgumentException _
-         (BigInteger. s radix))))
+         (BigInteger. ^String s radix))))
 
 (defn- parse-int
   [s]
@@ -23,7 +46,7 @@
 (defn- parse-uint
   [s]
   (let [tail? (str/ends-with? s "u")
-        hex?  (str/starts-with? s "0x")
+        hex? (str/starts-with? s "0x")
         input (subs s (if hex? 2 0) (cond-> (count s) tail? dec))]
     (expr/uint (parse-long input (if hex? 16 10)))))
 
@@ -32,69 +55,71 @@
    Parse trees are usually generated through `antlr/make-program`,
    while the visitor is an implementation of `CELVisitor` as given
    by `build` in this namespace, for example."
-  [visitor input]
+  [^CELBaseVisitor visitor input]
   (.visit visitor input))
 
 (defn build
   "Yields a new instance of `CELVisitor` which yields the computed
   result"
   [{:keys [bindings overloads] :as cfg
-    :or   {overloads expr/overloads}}]
+    :or {overloads expr/overloads}}]
   (proxy [CELBaseVisitor] []
-    (visitBoolTrue [_]
+    (visitBoolTrue [^exoscale.cel.CELParser$BoolTrueContext _]
       (expr/bool true))
-    (visitBoolFalse [_]
+    (visitBoolFalse [^exoscale.cel.CELParser$BoolFalseContext _]
       (expr/bool false))
-    (visitNull [_]
+    (visitNull [^exoscale.cel.CELParser$NullContext _]
       (expr/null))
-    (visitBytes [ctx]
-      (-> ctx .BYTES .getText  (subs 1) unescape/bytes expr/bytes))
-    (visitString [ctx]
+    (visitBytes [^exoscale.cel.CELParser$BytesContext ctx]
+      (-> (subs (ctx->bytes->text ctx) 1)
+          unescape/bytes expr/bytes))
+    (visitString [^exoscale.cel.CELParser$StringContext ctx]
       (try
-        (-> ctx .STRING .getText unescape/string expr/string)
+        (-> ctx ctx->string->text unescape/string expr/string)
         (catch Exception e
           (expr/error (ex-message e)))))
     (visitUint [ctx]
-      (-> ctx .NUM_UINT .getText parse-uint))
-    (visitInt [ctx]
-      (cond-> (-> ctx .NUM_INT .getText parse-int)
+      (-> ctx ctx->num-uint->text parse-uint))
+    (visitInt [^exoscale.cel.CELParser$IntContext ctx]
+      (cond-> (-> ctx ctx->num-int->text parse-int)
         (some? (.MINUS ctx))
         (expr/update (comp long (partial * -1)))))
-    (visitDouble [ctx]
-      (cond-> (-> ctx .NUM_FLOAT .getText Double/parseDouble expr/make-double)
+    (visitDouble [^exoscale.cel.CELParser$DoubleContext ctx]
+      (cond-> (-> ctx ctx->num-float->text Double/parseDouble expr/make-double)
         (some? (.MINUS ctx))
         (expr/update * -1.0)))
-    (visitNested [ctx]
+    (visitNested [^exoscale.cel.CELParser$NestedContext ctx]
       (.visit this (.e ctx)))
-    (visitLogicalNot [ctx]
+    (visitLogicalNot [^exoscale.cel.CELParser$LogicalNotContext ctx]
       (let [expr (.visit this (.member ctx))]
         (if (expr/bool? expr)
           (expr/update expr not)
           (expr/error "no such overload"))))
-
-    (visitNegate [ctx]
+    (visitNegate [^exoscale.cel.CELParser$NegateContext ctx]
       (let [expr (.visit this (.member ctx))]
         (try
           (expr/eval overloads :negate [expr])
           (catch ArithmeticException e
             (expr/error (ex-message e))))))
-    (visitCreateList [ctx]
+    (visitCreateList [^exoscale.cel.CELParser$CreateListContext ctx]
       (let [elems (for [e (some-> ctx .elems .expr)]
                     (.visit this e))]
         (expr/make-list elems)))
-    (visitCreateStruct [ctx]
+    (visitCreateStruct [^exoscale.cel.CELParser$CreateStructContext ctx]
       (let [keys (for [k (some-> ctx .entries .keys)]
                    (.visit this k))
             vals (for [v (some-> ctx .entries .values)]
                    (.visit this v))]
-        (expr/make-map (reduce conj {} (->> (interleave keys vals)
-                                            (partition 2)
-                                            (map vec))))))
-    (visitConstantLiteral [ctx]
+        (expr/make-map (reduce conj {}
+                               (->> (interleave keys vals)
+                                    (partition 2)
+                                    (map vec))))))
+    (visitConstantLiteral [^exoscale.cel.CELParser$ConstantLiteralContext ctx]
       (.visit this (.literal ctx)))
-    (visitIdentOrGlobalCall [ctx]
-      (let [id     (-> ctx .id .getText keyword)
-            op?    (nil? (.op ctx))
+
+    (visitIdentOrGlobalCall [^exoscale.cel.CELParser$IdentOrGlobalCallContext ctx]
+      (let [id (-> ctx .id .getText keyword)
+            op? (nil? (.op ctx))
             argseq (some->> ctx .args .expr)]
         (cond
           op?
@@ -104,33 +129,33 @@
           (= :has id)
           (if (not= (count argseq) 1)
             (expr/error "wrong argument count for has")
-            (let [arg        (.getText (first argseq))
+            (let [arg (.getText (first argseq))
                   last-index (str/last-index-of arg ".")]
               (if (nil? last-index)
                 (expr/error "invalid arguments for has()")
                 (let [input (subs arg 0 last-index)
-                      m     (.visit this (antlr/make-program input))
+                      m (.visit this (antlr/make-program input))
                       field (expr/string (subs arg (inc last-index)))]
                   (expr/eval overloads :has [m field])))))
 
           :else
           (or (expr/eval overloads id (map #(.visit this %) argseq))
               (expr/error "no such overload")))))
-    (visitCreateMessage [ctx]
-      (let [_ (-> ctx .member .getText keyword)]
+    (visitCreateMessage [^exoscale.cel.CELParser$CreateMessageContext ctx]
+      (let [_ (keyword (str (-> ctx .member .getText)))]
         (expr/error "not implemented")))
-    (visitIndex [ctx]
+    (visitIndex [^exoscale.cel.CELParser$IndexContext ctx]
       (let [member (.visit this (.member ctx))
-            index  (.visit this (.index ctx))]
+            index (.visit this (.index ctx))]
         (try
           (expr/eval overloads :index [member index])
           (catch IndexOutOfBoundsException e
             (expr/error (ex-message e))))))
-    (visitSelectOrCall [ctx]
-      (let [id      (-> ctx .id .getText keyword)
-            member  (.visit this (.member ctx))
+    (visitSelectOrCall [^exoscale.cel.CELParser$SelectOrCallContext ctx]
+      (let [id (-> ctx .id .getText str keyword)
+            member (.visit this (.member ctx))
             select? (nil? (.open ctx))
-            argseq  (some->> ctx .args .expr)]
+            argseq (some->> ctx .args .expr)]
         (cond
           select?
           (expr/eval overloads :select [member (expr/string (name id))])
@@ -146,9 +171,9 @@
 
             :else
             (let [binding (keyword (.getText (first argseq)))
-                  input   (.getText (second argseq))]
+                  input (.getText (second argseq))]
               (loop [[head & tail] (expr/val member)
-                     res           []]
+                     res []]
                 (if (nil? head)
                   (expr/make-list res)
                   (let [e (eval
@@ -169,11 +194,11 @@
 
             :else
             (let [binding (keyword (.getText (first argseq)))
-                  input   (.getText (second argseq))]
+                  input (.getText (second argseq))]
               (loop [[head & tail] (cond-> (expr/val member)
                                      (expr/map? member)
                                      keys)
-                     last-error    nil]
+                     last-error nil]
                 (if (nil? head)
                   (if (some? last-error) last-error (expr/bool true))
                   (let [e (eval
@@ -181,10 +206,10 @@
                                           bindings/add binding head))
                            (antlr/make-program input))]
                     (cond
-                      (expr/true? e)  (recur tail last-error)
+                      (expr/true? e) (recur tail last-error)
                       (expr/false? e) e
                       (expr/error? e) (recur tail e)
-                      :else           (recur tail (expr/error "no such overload"))))))))
+                      :else (recur tail (expr/error "no such overload"))))))))
 
           (= :exists id)
           (cond
@@ -196,11 +221,11 @@
 
             :else
             (let [binding (keyword (.getText (first argseq)))
-                  input   (.getText (second argseq))]
+                  input (.getText (second argseq))]
               (loop [[head & tail] (cond-> (expr/val member)
                                      (expr/map? member)
                                      keys)
-                     last-error    nil]
+                     last-error nil]
                 (if (nil? head)
                   (if (some? last-error) last-error (expr/bool false))
                   (let [e (eval
@@ -209,9 +234,9 @@
                            (antlr/make-program input))]
                     (cond
                       (expr/false? e) (recur tail last-error)
-                      (expr/true? e)  e
+                      (expr/true? e) e
                       (expr/error? e) (recur tail e)
-                      :else           (recur tail (expr/error "no such overload"))))))))
+                      :else (recur tail (expr/error "no such overload"))))))))
 
           (= :exists_one id)
           (cond
@@ -223,11 +248,11 @@
 
             :else
             (let [binding (keyword (.getText (first argseq)))
-                  input   (.getText (second argseq))]
+                  input (.getText (second argseq))]
               (loop [[head & tail] (cond-> (expr/val member)
                                      (expr/map? member)
                                      keys)
-                     true-count    0]
+                     true-count 0]
                 (if (nil? head)
                   (expr/bool (= 1 true-count))
                   (let [e (eval
@@ -236,9 +261,9 @@
                            (antlr/make-program input))]
                     (cond
                       (expr/false? e) (recur tail true-count)
-                      (expr/true? e)  (recur tail (inc true-count))
+                      (expr/true? e) (recur tail (inc true-count))
                       (expr/error? e) e
-                      :else           (expr/error "no such overload")))))))
+                      :else (expr/error "no such overload")))))))
 
           (= :filter id)
           (cond
@@ -250,9 +275,9 @@
 
             :else
             (let [binding (keyword (.getText (first argseq)))
-                  input   (.getText (second argseq))]
+                  input (.getText (second argseq))]
               (loop [[head & tail] (expr/val member)
-                     res           []]
+                     res []]
                 (if (nil? head)
                   (expr/make-list res)
                   (let [test (eval
@@ -260,19 +285,20 @@
                                              bindings/add binding head))
                               (antlr/make-program input))]
                     (cond
-                      (expr/error? test)      test
+                      (expr/error? test) test
                       (not (expr/bool? test)) (expr/error "no such overload")
-                      (expr/true? test)       (recur tail (conj res head))
-                      :else                   (recur tail res)))))))
+                      (expr/true? test) (recur tail (conj res head))
+                      :else (recur tail res)))))))
 
           :else
           (expr/eval overloads
                      id
                      (concat [member] (map #(.visit this %) argseq))))))
-    (visitPrimaryExpr [ctx]
+    (visitPrimaryExpr [^exoscale.cel.CELParser$PrimaryExprContext ctx]
       (.visit this (.primary ctx)))
-    (visitCalcAddSub [ctx]
-      (let [op   (-> ctx .op .getText)
+
+    (visitCalcAddSub [^exoscale.cel.CELParser$CalcAddSubContext ctx]
+      (let [op (-> ctx .op .getText)
             args (for [a (.calc ctx)] (.visit this a))]
         (try
           (or
@@ -280,17 +306,17 @@
            (expr/error "no such overload"))
           (catch ArithmeticException e
             (expr/error (ex-message e))))))
-    (visitCalcMulDiv [ctx]
-      (let [op   (-> ctx .op .getText)
+    (visitCalcMulDiv [^exoscale.cel.CELParser$CalcMulDivContext ctx]
+      (let [op (-> ctx .op .getText)
             args (for [a (.calc ctx)] (.visit this a))]
         (try
           (expr/eval overloads (expr/relation-op-name op) args)
           (catch Exception e
             (expr/error (ex-message e))))))
-    (visitCalcUnary [ctx]
+    (visitCalcUnary [^exoscale.cel.CELParser$CalcUnaryContext ctx]
       (.visit this (.unary ctx)))
-    (visitRelationOp [ctx]
-      (let [op   (-> ctx .op .getText)
+    (visitRelationOp [^exoscale.cel.CELParser$RelationOpContext ctx]
+      (let [op (-> ctx .op .getText)
             args (for [a (->> ctx .relation)]
                    (.visit this a))]
         (try
@@ -299,13 +325,13 @@
            (expr/error "no such overload"))
           (catch ArithmeticException e
             (expr/error (ex-message e))))))
-    (visitRelationCalc [ctx]
+    (visitRelationCalc [^exoscale.cel.CELParser$RelationCalcContext ctx]
       (.visit this (.calc ctx)))
-    (visitConditionalOr [ctx]
+    (visitConditionalOr [^exoscale.cel.CELParser$ConditionalOrContext ctx]
       (if (seq (.e1 ctx))
         (let [args (concat [(.e ctx)] (seq (.e1 ctx)))]
           (loop [[head & tail] args
-                 last-error    nil]
+                 last-error nil]
             (if (nil? head)
               (if (some? last-error)
                 last-error
@@ -324,11 +350,11 @@
                   :else
                   (recur tail (expr/error "no such overload")))))))
         (.visit this (.e ctx))))
-    (visitConditionalAnd [ctx]
+    (visitConditionalAnd [^exoscale.cel.CELParser$ConditionalAndContext ctx]
       (if (seq (.e1 ctx))
         (let [args (concat [(.e ctx)] (seq (.e1 ctx)))]
           (loop [[head & tail] args
-                 last-error    nil]
+                 last-error nil]
             (if (nil? head)
               (if (some? last-error)
                 last-error
@@ -347,15 +373,15 @@
                   :else
                   (recur tail (expr/error "no such overload")))))))
         (.visit this (.e ctx))))
-    (visitExpr [ctx]
-      (let [e  (.visit this (.e ctx))
+    (visitExpr [^exoscale.cel.CELParser$ExprContext ctx]
+      (let [e (.visit this ^exoscale.cel.CELParser$ConditionalOrContext (.e ctx))
             e1 (.e1 ctx)
             e2 (.e2 ctx)]
         (if (some? e1)
           (cond
-            (expr/true? e)  (.visit this e1)
+            (expr/true? e) (.visit this e1)
             (expr/false? e) (.visit this e2)
-            :else           (expr/error "no such overload"))
+            :else (expr/error "no such overload"))
           e)))
-    (visitStart [ctx]
+    (visitStart [^exoscale.cel.CELParser$StartContext ctx]
       (.visit this (.expr ctx)))))
