@@ -893,15 +893,16 @@
 
 (defn find-match
   [matchers args]
-  (first
-   (for [{:keys [handler] :as m} matchers
-         :when (and (if-let [on (:on m)]
-                      (args-match? on args)
-                      true)
-                    (if-let [guard (:guard m)]
-                      (guard args)
-                      true))]
-     handler)))
+  (reduce (fn [_ m]
+            (when (and (if-let [on (:on m)]
+                         (args-match? on args)
+                         true)
+                       (if-let [guard (:guard m)]
+                         (guard args)
+                         true))
+              (reduced (:handler m))))
+          nil
+          matchers))
 
 (defn eval
   [overloads f args]
