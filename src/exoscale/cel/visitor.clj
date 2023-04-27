@@ -331,50 +331,48 @@
     (visitRelationCalc [^exoscale.cel.CELParser$RelationCalcContext ctx]
       (.visit ^CELBaseVisitor this (.calc ctx)))
     (visitConditionalOr [^exoscale.cel.CELParser$ConditionalOrContext ctx]
-      (if (seq (.e1 ctx))
-        (let [args (concat [(.e ctx)] (seq (.e1 ctx)))]
-          (loop [[head & tail] args
-                 last-error nil]
-            (if (nil? head)
-              (if (some? last-error)
-                last-error
-                (expr/bool false))
-              (let [res (.visit ^CELBaseVisitor this head)]
-                (cond
-                  (and (expr/bool? res) (expr/true? res))
-                  res
+      (if-let [e1s (seq (.e1 ctx))]
+        (loop [[head & tail] (cons (.e ctx) e1s)
+               last-error nil]
+          (if (nil? head)
+            (if (some? last-error)
+              last-error
+              (expr/bool false))
+            (let [res (.visit ^CELBaseVisitor this head)]
+              (cond
+                (and (expr/bool? res) (expr/true? res))
+                res
 
-                  (expr/bool? res)
-                  (recur tail last-error)
+                (expr/bool? res)
+                (recur tail last-error)
 
-                  (expr/error? res)
-                  (recur tail res)
+                (expr/error? res)
+                (recur tail res)
 
-                  :else
-                  (recur tail (expr/error "no such overload")))))))
+                :else
+                (recur tail (expr/error "no such overload"))))))
         (.visit ^CELBaseVisitor this (.e ctx))))
     (visitConditionalAnd [^exoscale.cel.CELParser$ConditionalAndContext ctx]
-      (if (seq (.e1 ctx))
-        (let [args (concat [(.e ctx)] (seq (.e1 ctx)))]
-          (loop [[head & tail] args
-                 last-error nil]
-            (if (nil? head)
-              (if (some? last-error)
-                last-error
-                (expr/bool true))
-              (let [res (.visit ^CELBaseVisitor this head)]
-                (cond
-                  (expr/true? res)
-                  (recur tail last-error)
+      (if-let [e1s (seq (.e1 ctx))]
+        (loop [[head & tail] (cons (.e ctx) e1s)
+               last-error nil]
+          (if (nil? head)
+            (if (some? last-error)
+              last-error
+              (expr/bool true))
+            (let [res (.visit ^CELBaseVisitor this head)]
+              (cond
+                (expr/true? res)
+                (recur tail last-error)
 
-                  (expr/false? res)
-                  res
+                (expr/false? res)
+                res
 
-                  (expr/error? res)
-                  (recur tail res)
+                (expr/error? res)
+                (recur tail res)
 
-                  :else
-                  (recur tail (expr/error "no such overload")))))))
+                :else
+                (recur tail (expr/error "no such overload"))))))
         (.visit ^CELBaseVisitor this (.e ctx))))
     (visitExpr [^exoscale.cel.CELParser$ExprContext ctx]
       (let [e (.visit ^CELBaseVisitor this
