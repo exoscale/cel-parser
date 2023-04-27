@@ -219,8 +219,8 @@
   (typed-value? [_] true)
   (equal? [_ other]
     (let [other-elems (val other)
-          c1types (set (map typeof elems))
-          c2types (set (map typeof other-elems))]
+          c1types (into #{} (map typeof) elems)
+          c2types (into #{} (map typeof) other-elems)]
       (cond
         (= (count elems) (count other-elems) 1)
         (if (= c1types c2types)
@@ -232,12 +232,14 @@
 
         :else
         (BoolType.
-         (every?
-          clojure.core/true?
-          (for [[e1 e2] (->> (interleave elems other-elems)
-                             (partition 2))]
-            (and (= (typeof e1) (typeof e2))
-                 (:x (equal? e1 e2)))))))))
+         (reduce (fn [a [e1 e2]]
+                   (if (and (= (typeof e1) (typeof e2))
+                            (:x (equal? e1 e2)))
+                     a
+                     (reduced false)))
+                 true
+                 (->> (interleave elems other-elems)
+                      (partition 2)))))))
   Sizable
   (sizeof [_]
     (IntType. (count elems)))
@@ -248,15 +250,17 @@
   (indexable? [_] true)
   Container
   (has-element [_ e]
-    (let [types (set (map typeof elems))
+    (let [types (into #{} (map typeof) elems)
           uniform? (= 1 (count types))
-          found? (boolean
-                  (seq
-                   (for [candidate elems
-                         :let [eq? (and (= (typeof candidate) (typeof e))
-                                        (equal? candidate e))]
-                         :when (and eq? (instance? BoolType eq?) (val eq?))]
-                     true)))]
+          found?
+          (reduce (fn [a candidate]
+                    (let [eq? (and (= (typeof candidate) (typeof e))
+                                   (equal? candidate e))]
+                      (if (and eq? (instance? BoolType eq?) (val eq?))
+                        (reduced true)
+                        a)))
+                  false
+                  elems)]
       (cond
         found?
         (BoolType. true)
@@ -274,22 +278,31 @@
   TypedValue
   (typeof [_] :map)
   (val [_] entries)
-  (unwrap [_] (into {} (for [[k v] entries] [(unwrap k) (unwrap v)])))
+  (unwrap [_]
+    (persistent!
+     (reduce (fn [m [k v]]
+               (assoc! m (unwrap k) (unwrap v)))
+             (transient {})
+             entries)))
   (typed-value? [_] true)
   (equal? [_ other]
     (let [other-entries (val other)
-          m1ktypes (set (map typeof (keys entries)))
-          m1vtypes (set (map typeof (vals entries)))
-          m2ktypes (set (map typeof (keys other-entries)))]
+          entries-keys (keys entries)
+          other-entries-keys (keys other-entries)
+          entries-vals (vals entries)
+          other-entries-vals (vals other-entries)
+          m1ktypes (into #{} (map typeof) entries-keys)
+          m1vtypes (into #{} (map typeof) entries-vals)
+          m2ktypes (into #{} (map typeof) other-entries-keys)]
       (cond
         (= (count entries) (count other-entries) 1)
         (if (and (= m1ktypes m2ktypes)
                  (= m1vtypes m1vtypes))
           (bool-and
-           (equal? (first (keys entries))
-                   (first (keys other-entries)))
-           (equal? (first (vals entries))
-                   (first (vals other-entries))))
+           (equal? (first entries-keys)
+                   (first other-entries-keys))
+           (equal? (first entries-vals)
+                   (first other-entries-vals)))
           (ErrorType. "no such overload"))
 
         (not= (count entries) (count other-entries))
@@ -301,24 +314,29 @@
 
         :else
         (BoolType.
-         (every?
-          clojure.core/true?
-          (for [k (set (concat (keys entries) (keys other-entries)))
-                :let [v1 (get entries k)
-                      v2 (get other-entries k)]]
-            (and (= (typeof v1) (typeof v2))
-                 (val (equal? v1 v2)))))))))
+         (reduce (fn [_ k]
+                   (let [v1 (get entries k)
+                         v2 (get other-entries k)]
+                     (or (and (= (typeof v1) (typeof v2))
+                              (val (equal? v1 v2)))
+                         (reduced false))))
+                 true
+                 (set (concat entries-keys other-entries-keys)))))))
   Sizable
   (sizeof [_]
     (IntType. (count entries)))
   (sizable? [_] true)
   Container
   (has-element [_ e]
-    (let [types (set (map typeof (keys entries)))
-          found? (boolean
-                  (first (for [candidate (keys entries)]
-                           (and (= (typeof candidate) (typeof e))
-                                (equal? candidate e)))))]
+    (let [types (into #{} (map (comp typeof key)) entries)
+          found? (reduce (fn [a entry]
+                           (let [candidate (key entry)]
+                             (if (and (= (typeof candidate) (typeof e))
+                                      (equal? candidate e))
+                               (reduced true)
+                               a)))
+                         false
+                         entries)]
       (cond
         (and found? (= :bytes (typeof e)))
         (ErrorType. "unhashable type")
