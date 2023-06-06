@@ -738,7 +738,7 @@
                            (java.util.TimeZone/getTimeZone
                             (str (val tz))))
                       (.setTime (val t)))]
-       (IntType. (.get calendar java.util.Calendar/HOUR)))
+       (IntType. (.get calendar java.util.Calendar/HOUR_OF_DAY)))
      (catch Exception e
        (ErrorType. (ex-message e))))))
 
