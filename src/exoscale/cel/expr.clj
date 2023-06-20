@@ -681,7 +681,7 @@
                            (java.util.TimeZone/getTimeZone
                             (str (val tz))))
                       (.setTime (val t)))]
-       (IntType. (.get calendar java.util.Calendar/DAY_OF_WEEK)))
+       (IntType. (dec (.get calendar java.util.Calendar/DAY_OF_WEEK))))
      (catch Exception e
        (ErrorType. (ex-message e))))))
 
@@ -694,7 +694,7 @@
                            (java.util.TimeZone/getTimeZone
                             (str (val tz))))
                       (.setTime (val t)))]
-       (IntType. (.get calendar java.util.Calendar/DAY_OF_MONTH)))
+       (IntType. (dec (.get calendar java.util.Calendar/DAY_OF_MONTH))))
      (catch Exception e
        (ErrorType. (ex-message e))))))
 
@@ -707,7 +707,7 @@
                            (java.util.TimeZone/getTimeZone
                             (str (val tz))))
                       (.setTime (val t)))]
-       (IntType. (.get calendar java.util.Calendar/DAY_OF_YEAR)))
+       (IntType. (dec (.get calendar java.util.Calendar/DAY_OF_YEAR))))
      (catch Exception e
        (ErrorType. (ex-message e))))))
 
