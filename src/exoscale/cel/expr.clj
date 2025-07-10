@@ -318,7 +318,7 @@
                    (let [v1 (get entries k)
                          v2 (get other-entries k)]
                      (or (and (= (typeof v1) (typeof v2))
-                              (val (equal? v1 v2)))
+                              (:x (equal? v1 v2)))
                          (reduced false))))
                  true
                  (set (concat entries-keys other-entries-keys)))))))
@@ -332,7 +332,7 @@
           found? (reduce (fn [a entry]
                            (let [candidate (key entry)]
                              (if (and (= (typeof candidate) (typeof e))
-                                      (equal? candidate e))
+                                      (val (equal? candidate e)))
                                (reduced true)
                                a)))
                          false
