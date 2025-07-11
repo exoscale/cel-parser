@@ -5,6 +5,16 @@
                                  :repository "clojars"}
  :exoscale.project/deploy? true
 
+ :exoscale.project/pom-data [[:licenses
+                              [:license
+                               [:name "MIT"]
+                               [:url "https://opensource.org/license/mit/"]
+                               [:distribution "repo"]]
+                              [:license
+                               [:name "ISC"]
+                               [:url "https://opensource.org/license/isc-license-txt/"]
+                               [:distribution "repo"]]]]
+
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
         org.antlr/antlr4-runtime {:mvn/version "4.9.2"}
         com.exoscale/antlr-cel {:mvn/version "0.1.1"}}
@@ -12,7 +22,7 @@
  :aliases
  {:project
   {:deps {io.github.exoscale/tools.project
-          {:git/sha "b183fa74febb3f5f4daeb0c732a3817bf09e0f33"}}
+          {:git/sha "99e6b7aaccd9b97079341625c807b9fa0352e36d"}}
    :ns-default exoscale.tools.project}
   :test
   {:extra-deps {lambdaisland/kaocha {:mvn/version "1.68.1059"}
