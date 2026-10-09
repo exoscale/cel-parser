@@ -54,3 +54,26 @@ Some small divergences exist:
 - Integer conversions are slighlty more relaxed than the spec allows for, for
   instance `int(-9223372036854775807.0)` yields a valid int in this parser
   but is expected to fail in the spec
+
+## Optional extensions
+
+Functions that are *not* part of the CEL standard library are deliberately
+kept out of the default evaluation set, so expressions stay portable to any
+spec-compliant CEL implementation. When you need one, opt in explicitly by
+merging it into the `:overloads` option.
+
+``` clojure
+;; lowerAscii()/upperAscii() are non-standard; enable the strings extension.
+(def strings (expr/merge-overloads expr/strings-extension-overloads))
+(parser/parse-eval {:overloads strings} "'TacoCÆt'.lowerAscii()") ;; => "tacocÆt"
+(parser/parse-eval {:overloads strings} "'tacoCαt'.upperAscii()") ;; => "TACOCαT"
+```
+
+Available extensions (see `exoscale.cel.expr`):
+
+- `strings-extension-overloads` — `lowerAscii()` and `upperAscii()` (mirrors
+  cel-go's `ext.Strings()`): each acts only on the ASCII letters `A`–`Z`/`a`–`z`;
+  every other codepoint (e.g. `Æ`, `α`, `é`) is left unchanged.
+
+Without opting in, a non-standard call such as `lowerAscii('ABC')` yields the
+usual `no such overload` error, exactly like any other unknown function.

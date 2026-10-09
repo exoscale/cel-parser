@@ -530,6 +530,40 @@
 (defn s-contains [s re] (bool (str/includes? (val s) (val re))))
 (defn s-starts-with [s re] (bool (str/starts-with? (val s) (val re))))
 (defn s-ends-with [s re] (bool (str/ends-with? (val s) (val re))))
+(defn- map-ascii-range
+  "Apply `f` to every ASCII codepoint in [lo hi], leaving all other codepoints
+   unchanged. Byte-safe for UTF-8: ASCII bytes never appear inside multi-byte
+   sequences, and every non-ASCII codepoint is outside [lo hi].
+
+   NOTE: `int`/`char` are shadowed in this namespace by the CEL constructors, so
+   `clojure.core/int`/`clojure.core/char` are called explicitly here."
+  ^String
+  [^String s lo hi f]
+  (let [sb (StringBuilder. (.length s))]
+    (dotimes [i (.length s)]
+      (let [c (.charAt s i)
+            ci (clojure.core/int c)]
+        (.append sb (if (<= lo ci hi)
+                      (clojure.core/char (f ci))
+                      c))))
+    (.toString sb)))
+
+(defn- lower-ascii
+  "Lower-case only the ASCII letters A-Z; non-ASCII codepoints unchanged
+   (matches cel-go's lowerAscii)."
+  ^String
+  [^String s]
+  (map-ascii-range s 65 90 #(+ % 32)))
+
+(defn- upper-ascii
+  "Upper-case only the ASCII letters a-z; non-ASCII codepoints unchanged
+   (matches cel-go's upperAscii)."
+  ^String
+  [^String s]
+  (map-ascii-range s 97 122 #(- % 32)))
+
+(defn s-lower-ascii [x] (string (lower-ascii (val x))))
+(defn s-upper-ascii [x] (string (upper-ascii (val x))))
 (defn not-equal? [e1 e2] (update (equal? e1 e2) not))
 (defn negate-int [x] (long! (update x * -1)))
 (defn negate-double [x] (update x * -1.0))
@@ -902,6 +936,44 @@
                                 (select-keys %2 [:on :handler :guard]))
           {}
           standard-overloads))
+
+;; ---------------------------------------------------------------------------
+;; Optional extensions
+;; ---------------------------------------------------------------------------
+;;
+;; The following overloads are *not* part of the CEL standard library
+;; (https://github.com/google/cel-spec), so they are intentionally kept out of
+;; `standard-overloads`/`overloads`. Baking non-standard functions into the
+;; default set would silently break expression portability: an expression that
+;; relies on them here would fail on any spec-compliant CEL implementation.
+;;
+;; Callers who want them can opt in explicitly by merging them into the
+;; `:overloads` passed to the parser, e.g.:
+;;
+;;   (parser/parse-eval
+;;    {:overloads (expr/merge-overloads expr/strings-extension-overloads)}
+;;    "'ABC'.lowerAscii()")
+
+(def strings-extension-overloads
+  "Non-standard, opt-in string overloads (mirrors cel-go's ext.Strings()).
+   Currently: `lowerAscii` and `upperAscii` — both act only on the ASCII letters
+   A-Z/a-z; every other (non-ASCII) codepoint is left unchanged. Not enabled by
+   default; see `merge-overloads`."
+  [{:when :lowerAscii :on [string?] :handler s-lower-ascii}
+   {:when :upperAscii :on [string?] :handler s-upper-ascii}])
+
+(defn merge-overloads
+  "Build a dispatch map from `standard-overloads` extended with `extra`
+   overload specs (e.g. `strings-extension-overloads`). Pass the result as the
+   `:overloads` option to the parser."
+  [extra]
+  (reduce #(clojure.core/update %1 (:when %2) conj
+                                (select-keys %2 [:on :handler :guard]))
+          (reduce #(clojure.core/update %1 (:when %2) conj
+                                        (select-keys %2 [:on :handler :guard]))
+                  {}
+                  standard-overloads)
+          extra))
 
 (defn args-match?
   [arg-defs args]
