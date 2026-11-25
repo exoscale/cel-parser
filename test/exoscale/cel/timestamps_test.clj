@@ -1,13 +1,11 @@
 (ns exoscale.cel.timestamps-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [exoscale.cel.parser :as parser]
-   [exoscale.cel.test-helper :as helper]))
+   [exoscale.cel.parser :as parser])
+  (:import (java.time Instant)))
 
 (defn parse-eval [expr]
-  (:x (parser/parse-eval
-       {:bindings (helper/bindings nil), :translate-result? false}
-       expr)))
+  (parser/parse-eval expr))
 
 (defn timestamp-fn [f datetime]
   (parse-eval (str "timestamp('" datetime "')." f "()")))
@@ -27,14 +25,17 @@
       (is (= 0 (get-day-of-week "2023-06-18T23:31:30Z")))
       (is (= 1 (get-day-of-week "2023-06-19T23:31:30Z")))
       (is (= 2 (get-day-of-week "2023-06-20T23:31:30Z")))
-      (is (= #inst "2023-06-21T00:31:30.021000000-00:00"
+      (is (= (Instant/parse "2023-06-21T00:31:30.021Z")
              (parse-eval "timestamp('2023-06-20T23:31:30.021-01:00')")))
       (is (= 3 (parse-eval "timestamp('2023-06-20T23:31:30.021-01:00').getDayOfWeek()")))
       (is (= 2 (parse-eval "timestamp('2023-06-20T21:31:30Z').getDayOfWeek('CET')")))
       (is (= 3 (parse-eval "timestamp('2023-06-20T22:31:30Z').getDayOfWeek('CET')")))
-      (is (= 2 (parse-eval "timestamp('2023-06-20T17:31:30Z').getDayOfWeek('IST')")))
-      (is (= 3 (parse-eval "timestamp('2023-06-20T18:31:30Z').getDayOfWeek('IST')")))
-      (is (= 3 (parse-eval "timestamp('2023-06-20T23:31:30Z').getDayOfWeek('IST')"))))
+      (is (= 2 (parse-eval "timestamp('2023-06-20T17:31:30Z').getDayOfWeek('Asia/Kolkata')")))
+      (is (= 3 (parse-eval "timestamp('2023-06-20T18:31:30Z').getDayOfWeek('Asia/Kolkata')")))
+      (is (= 3 (parse-eval "timestamp('2023-06-20T23:31:30Z').getDayOfWeek('Asia/Kolkata')")))
+      (is (instance? clojure.lang.ExceptionInfo
+                     (parse-eval "timestamp('2023-06-20T23:31:30Z').getDayOfWeek('IST')"))
+          "timezone abbreviations are not valid CEL timezones"))
 
     (testing "getDayOfMonth: get day of month from the date in UTC, zero-based indexing"
       (is (= 0 (get-day-of-month "2023-06-01T23:31:30Z"))))

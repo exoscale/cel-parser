@@ -16,8 +16,7 @@
                                [:distribution "repo"]]]]
 
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
-        org.antlr/antlr4-runtime {:mvn/version "4.9.2"}
-        com.exoscale/antlr-cel {:mvn/version "0.1.1"}}
+        dev.cel/cel {:mvn/version "0.15.0"}}
 
  :aliases
  {:project
@@ -27,5 +26,5 @@
   :test
   {:extra-deps {lambdaisland/kaocha {:mvn/version "1.68.1059"}
                 org.clojure/test.check {:mvn/version "1.1.1"}}
-   :extra-paths ["test" "test/resources" "target/classes"]
+   :extra-paths ["test" "test/resources"]
    :exec-fn kaocha.runner/exec-fn}}}
