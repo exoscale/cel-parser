@@ -1,66 +1,49 @@
+;; Tests for map operations on bound maps: membership with `in`, `has()`
+;; and equality of values, including keys containing dashes.
 (ns exoscale.cel.map-test
   (:require [clojure.test :refer [deftest is testing]]
-            [exoscale.cel.parser :as parser]
-            [exoscale.cel.test-helper :as helper]))
+            [exoscale.cel.parser :as parser]))
+
+(def abc->cde
+  {:headers {"abc" "cde"
+             "with-dashes" "cde"}})
 
 (deftest test-operator-in
-  (let [abc->cde (helper/bindings {:headers {:value {:mapValue {:entries [{:key   {:stringValue "abc"}
-                                                                           :value {:stringValue "cde"}}
+  (testing "non-dashed value"
+    (testing "value does not exist"
+      (is (not (parser/parse-eval {:bindings abc->cde
+                                   :throw-on-error? true}
+                                  "('xxx' in headers)"))))
 
-                                                                          {:key   {:stringValue "with-dashes"}
-                                                                           :value {:stringValue "cde"}}]}}}})]
-    (testing "non-dashed value"
-      (testing "value does not exist"
-        (is (not (parser/parse-eval {:bindings          abc->cde
-                                     :throw-on-error?   true
-                                     :translate-result? true}
-                                    "('xxx' in headers)"))))
+    (testing "value exists"
+      (is (parser/parse-eval {:bindings abc->cde
+                              :throw-on-error? true}
+                             "('abc' in headers)"))))
 
-      (testing "value exists"
-        (is (parser/parse-eval {:bindings          abc->cde
-                                :throw-on-error?   true
-                                :translate-result? true}
-                               "('abc' in headers)"))))
+  (testing "value with dashes"
+    (testing "value does not exist"
+      (is (not (parser/parse-eval {:bindings abc->cde
+                                   :throw-on-error? true}
+                                  "('some-header' in headers)"))))
 
-    (testing "value with dashes"
-      (testing "value does not exist"
-        (is (not (parser/parse-eval {:bindings          abc->cde
-                                     :throw-on-error?   true
-                                     :translate-result? true}
-                                    "('some-header' in headers)"))))
-
-      (testing "value exists"
-        (is (parser/parse-eval {:bindings          abc->cde
-                                :throw-on-error?   true
-                                :translate-result? true}
-                               "('with-dashes' in headers)"))))))
+    (testing "value exists"
+      (is (parser/parse-eval {:bindings abc->cde
+                              :throw-on-error? true}
+                             "('with-dashes' in headers)")))))
 
 (deftest test-map-has
-  (let [abc->cde (helper/bindings {:headers {:value {:mapValue {:entries [{:key   {:stringValue "abc"}
-                                                                           :value {:stringValue "cde"}}
-
-                                                                          {:key   {:stringValue "with-dashes"}
-                                                                           :value {:stringValue "cde"}}]}}}})]
-    (testing "value exists"
-      (is (parser/parse-eval {:bindings          abc->cde
-                              :throw-on-error?   true
-                              :translate-result? true}
-                             "has(headers.abc)")))))
+  (testing "value exists"
+    (is (parser/parse-eval {:bindings abc->cde
+                            :throw-on-error? true}
+                           "has(headers.abc)"))))
 
 (deftest test-map-equality
-  (let [abc->cde (helper/bindings {:headers {:value {:mapValue {:entries [{:key   {:stringValue "abc"}
-                                                                           :value {:stringValue "cde"}}
+  (testing "value matches"
+    (is (parser/parse-eval {:bindings abc->cde
+                            :throw-on-error? true}
+                           "(headers.abc) == 'cde'")))
 
-                                                                          {:key   {:stringValue "with-dashes"}
-                                                                           :value {:stringValue "cde"}}]}}}})]
-    (testing "value matches"
-      (is (parser/parse-eval {:bindings          abc->cde
-                              :throw-on-error?   true
-                              :translate-result? true}
-                             "(headers.abc) == 'cde'")))
-
-    (testing "value with dashes matches"
-      (is (parser/parse-eval {:bindings          abc->cde
-                              :throw-on-error?   true
-                              :translate-result? true}
-                             "headers['with-dashes'] == 'cde'")))))
+  (testing "value with dashes matches"
+    (is (parser/parse-eval {:bindings abc->cde
+                            :throw-on-error? true}
+                           "headers['with-dashes'] == 'cde'"))))
